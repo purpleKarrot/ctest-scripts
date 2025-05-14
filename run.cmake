@@ -17,7 +17,9 @@ set(__toolchain_file "${__toolchain_dir}/${CTEST_BUILD_NAME}.cmake")
 
 if(EXISTS "${__toolchain_file}")
   set(ENV{CMAKE_TOOLCHAIN_FILE} "${__toolchain_file}")
-elseif(EXISTS "${__pipeline_file}")
+endif()
+
+if(EXISTS "${__pipeline_file}")
   include("${__pipeline_file}")
 else()
   message(FATAL_ERROR "Unknown CTEST_BUILD_NAME=${CTEST_BUILD_NAME}!")
@@ -29,7 +31,7 @@ endif()
 
 string(MD5 src_md5 "${CTEST_SOURCE_DIRECTORY}")
 file(REAL_PATH "~/.cache/build/${src_md5}" CTEST_BINARY_DIRECTORY EXPAND_TILDE)
-ctest_empty_binary_directory("${CTEST_BINARY_DIRECTORY}")
+file(REMOVE_RECURSE "${CTEST_BINARY_DIRECTORY}")
 
 execute_process(COMMAND git rev-parse HEAD
   WORKING_DIRECTORY "${CTEST_SOURCE_DIRECTORY}"
@@ -61,4 +63,18 @@ if(CTEST_COVERAGE_COMMAND)
   ctest_submit(PARTS "Coverage")
 endif()
 
+if(DEFINED CPACK_GENERATOR)
+  execute_process(COMMAND "${CMAKE_CPACK_COMMAND}" -G "${CPACK_GENERATOR}"
+    "-DCPACK_THREADS=${nproc}"
+    WORKING_DIRECTORY "${CTEST_BINARY_DIRECTORY}"
+    OUTPUT_VARIABLE cpack_output
+    )
+  set(package_regex "CPack: - package: ([^\n;]+) generated.")
+  string(REGEX MATCHALL "${package_regex}" matches "${cpack_output}")
+  string(REGEX REPLACE "${package_regex}" "\\1" files "${matches}")
+  ctest_upload(FILES ${files})
+  ctest_submit(PARTS "Upload")
+endif()
+
 ctest_submit(PARTS "Done")
+file(REMOVE_RECURSE "${CTEST_BINARY_DIRECTORY}")
