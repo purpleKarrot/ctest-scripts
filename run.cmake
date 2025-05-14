@@ -41,6 +41,9 @@ execute_process(COMMAND git rev-parse HEAD
 
 cmake_host_system_information(RESULT nproc QUERY NUMBER_OF_LOGICAL_CORES)
 
+set(ENV{CMAKE_C_COMPILER_LAUNCHER}   "/usr/bin/ccache")
+set(ENV{CMAKE_CXX_COMPILER_LAUNCHER} "/usr/bin/ccache")
+
 ctest_start("Experimental")
 ctest_submit(PARTS "Start")
 
